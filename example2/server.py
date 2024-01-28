@@ -3,6 +3,7 @@ import joblib
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from flask import Flask, request, jsonify, json
+import time
 
 xgb_model = joblib.load('xgb_model.pkl')
 
@@ -14,24 +15,36 @@ def main():
 
     while True:
         conn, addr = s.accept()
-        print("Bağlantı alındı:", addr)
-
-        data = conn.recv(1024)
-        request = data.decode()
         
-        dataD = {"src_bytes": len(request)}
+        print("Bağlantı alındı:", addr)
+        start_time = time.time()
+        time.sleep(2)
+        data = conn.recv(1024)
+        request = data.decode()        
+        response_data = "geri donus aldin hadi yoluna bro."
+        conn.sendall(response_data.encode())
+        end_time = time.time()
+        total_time = end_time - start_time
+        dataD = {
+            "src_bytes": len(request),
+            "protocol_type": "tcp",
+            "duration": total_time,
+            "dst_bytes": len(response_data)
+        }
+        
         dataD = prepare_input_data(dataD)
         input_data = preprocess_data(dataD)
         prediction = xgb_model.predict(input_data)
+        if prediction == True:
+            print("Saldırı tespit edildi!".encode())
+        else:
+            print("Saldırı tespit edilmedi.".encode())
+
 
         print(input_data.to_string())
         # GUESS
         print(json.dumps({'prediction': prediction.tolist()}))
 
-        if prediction == True:
-            conn.sendall("Saldırı tespit edildi!".encode())
-        else:
-            conn.sendall("Saldırı tespit edilmedi.".encode())
 
         conn.close()
 
