@@ -12,7 +12,7 @@ xgb_model = joblib.load('xgb_model.pkl')
 @app.route('/predict', methods=['POST'])
 def predict():
     data = request.get_json()
-
+    
     data = prepare_input_data(data)
 
     # Gelen veriyi modele uygun formata çevir
