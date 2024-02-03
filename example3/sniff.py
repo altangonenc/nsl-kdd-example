@@ -61,58 +61,64 @@ def send_prediction_request(data):
     # Flask API'sine istek gönder
     url = "http://127.0.0.1:5000/predict"  # Flask uygulamasının çalıştığı adresi ve portu kullanın
     response = requests.post(url, json=data)
-    
     # İstek sonucunu ekrana yazdır
     print(f"Prediction Result: {response.json()}")
 
 
 def packet_callback(packet):
-    if IP in packet:
+    # Filtreleri uygula
+    if IP in packet and TCP in packet and packet[TCP].dport == 5001:  # TCP port 5001
+        if packet[IP].src == "192.168.1.32" or packet[IP].dst == "192.168.1.32":  # IP adresi filtresi
+            try:
+                protocol_type = get_protocol_type(packet)
 
-        protocol_type = get_protocol_type(packet)
+                # Service türünü al
+                service_type = get_service_type(packet.load.decode('utf-8', errors='ignore')) if packet.haslayer('Raw') else "other"
 
-        # Service türünü al
-        service_type = get_service_type(packet.load.decode('utf-8', errors='ignore')) if packet.haslayer('Raw') else "other"
+                logged_in = 0
+                root_shell = 0
+                su_attempted = 0
 
-        logged_in = 0
-        root_shell = 0
-        su_attempted = 0
+                if packet.haslayer("Raw"):
+                    payload = packet[Raw].load.decode('utf-8', errors='ignore')
 
-        if packet.haslayer("Raw"):
-            payload = packet[Raw].load.decode('utf-8', errors='ignore')
+                    # Payload içinde Num Failed Logins ara
+                    if "Num Failed Logins" in payload:
+                        import re
+                        match = re.search(r'Num Failed Logins: (\d+)', payload)
+                        if match:
+                            num_failed_logins = int(match.group(1))
 
-            # Payload içinde Num Failed Logins ara
-            if "Num Failed Logins" in payload:
-                import re
-                match = re.search(r'Num Failed Logins: (\d+)', payload)
-                if match:
-                    num_failed_logins = int(match.group(1))
+                    logged_in = 1 if "logged in" in payload.lower() else 0
+                    root_shell = 1 if "root shell" in payload.lower() else 0
+                    su_attempted = 1 if "su attempted" in payload.lower() else 0
 
-            logged_in = 1 if "logged in" in payload.lower() else 0
-            root_shell = 1 if "root shell" in payload.lower() else 0
-            su_attempted = 1 if "su attempted" in payload.lower() else 0
+                timestamp = packet.time if hasattr(packet, 'time') else 0
+                duration = timestamp - packet.time
 
-        timestamp = packet.time if hasattr(packet, 'time') else 0
-        duration = timestamp - packet.time
+                flag = packet.sprintf("%TCP.flags%") if protocol_type == "tcp" else 0
+                src_bytes = int(packet.sprintf("%IP.len%"))
+                dst_bytes = len(packet)
+                land = get_land_value(packet)
+                wrong_fragment = int(packet.sprintf("%IP.frag%"))
+                
+                # Urgent ve Hot değerlerini kontrol et
+                urgent = packet.sprintf("%TCP.urg%") if protocol_type == "tcp" and packet.sprintf("%TCP.urg%") != '??' else 0
+                hot = int(packet.sprintf("%TCP.window%") if protocol_type == "tcp" else 0)
 
-        flag = packet.sprintf("%TCP.flags%") if protocol_type == "tcp" else 0
-        src_bytes = int(packet.sprintf("%IP.len%"))
-        dst_bytes = len(packet)
-        land = get_land_value(packet)
-        wrong_fragment = int(packet.sprintf("%IP.frag%"))
-        
-        # Urgent ve Hot değerlerini kontrol et
-        urgent = packet.sprintf("%TCP.urg%") if protocol_type == "tcp" and packet.sprintf("%TCP.urg%") != '??' else 0
-        hot = int(packet.sprintf("%TCP.window%") if protocol_type == "tcp" else 0)
+                # Num Failed Logins değerini sayısal karakterlere dönüştür
+                raw_payload = packet.load.decode('utf-8', errors='ignore') if packet.haslayer('Raw') else ''
+                num_failed_logins = extract_numeric_value(raw_payload)
+                
+                input_data = prepare_input_data(protocol_type, service_type, logged_in, root_shell, duration, su_attempted, flag, src_bytes, dst_bytes, land, wrong_fragment, urgent, hot, num_failed_logins)
+                
+                # Flask API'sine istek gönder
+                send_prediction_request(input_data)
+                        # ... process the packet and send prediction request ...
+            except Exception as e:
+                print(f"Error processing packet: {e}")  # Log any errors
 
-        # Num Failed Logins değerini sayısal karakterlere dönüştür
-        raw_payload = packet.load.decode('utf-8', errors='ignore') if packet.haslayer('Raw') else ''
-        num_failed_logins = extract_numeric_value(raw_payload)
-        
-        input_data = prepare_input_data(protocol_type, service_type, logged_in, root_shell, duration, su_attempted, flag, src_bytes, dst_bytes, land, wrong_fragment, urgent, hot, num_failed_logins)
-        
-        # Flask API'sine istek gönder
-        send_prediction_request(input_data)
+    print(packet.summary())        
 
 def prepare_input_data(protocol_type, service_type, logged_in, root_shell, duration, su_attempted, flag, src_bytes, dst_bytes, land, wrong_fragment, urgent, hot, num_failed_logins):
     # Bu kısımda paketten gerekli bilgileri çıkartarak Flask API'sine gönderebilirsiniz
@@ -138,5 +144,11 @@ def prepare_input_data(protocol_type, service_type, logged_in, root_shell, durat
 
 
 # Tüm trafiği izle ve her paket için packet_callback fonksiyonunu çağır
-sniff(prn=packet_callback, store=0)
-# sniff(prn=packet_callback, filter="host localhost and port 8080", store=0)
+# sniff(prn=packet_callback, store=0)
+# sniff(prn=packet_callback, filter="host 127.0.0.1 and tcp dst port 5001", store=0)
+# sniff(filter="port 5001",prn=packet_callback)
+# sniff(prn=packet_callback, filter="tcp and port 5001", store=0)
+
+sniff(prn=packet_callback, store=0, filter="port 5001")
+
+

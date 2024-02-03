@@ -3,7 +3,9 @@ import random
 
 def main():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("127.0.0.1", 5000))
+    host = "192.168.1.32"
+    port = 5001
+    s.connect((host, port))
 
     try:
         # İsteği olustur

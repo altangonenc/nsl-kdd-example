@@ -8,13 +8,17 @@ import time
 xgb_model = joblib.load('xgb_model.pkl')
 
 def main():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 5000))
-    s.listen(1)
+    host = "192.168.1.32"
+    port = 5001
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_address = (host, port)
+    server_socket.bind(server_address)
+    server_socket.listen(1)
+
     print("Sunucu ayakta.")
 
     while True:
-        conn, addr = s.accept()
+        conn, addr = server_socket.accept()
         
         print("Bağlantı alındı:", addr)
         start_time = time.time()
