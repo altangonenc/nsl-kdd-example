@@ -1,0 +1,27 @@
+version: '3'
+services:
+  mariadb:
+    image: mariadb:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: adminadmin
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: adminadmin
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Mount the SQL file
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - mariadb
+    ports:
+      - "5001:5001"
+    environment:
+      DB_HOST: mariadb
+      DB_USER: admin
+      DB_PASSWORD: adminadmin
+      DB_NAME: testdb
