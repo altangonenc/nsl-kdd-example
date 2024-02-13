@@ -253,8 +253,10 @@ for packet in capture.sniff_continuously():
         }
 
         pre = send_prediction_request(data=data)
+        print("prediction --> ", pre.get('prediction')[0])
+        if pre.get('prediction')[0] == 1:
+            insert_data_to_mongodb(src_ip, src_port, dst_ip, dst_port, protocol, pre.get('prediction')[0], timestamp)
         
-        insert_data_to_mongodb(src_ip, src_port, dst_ip, dst_port, protocol, pre.get('prediction')[0], timestamp)
 
 
     # Programı durdurmak istediğiniz zaman kullanıcıdan bir giriş alabilirsiniz
