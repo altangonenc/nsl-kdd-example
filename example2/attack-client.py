@@ -3,11 +3,15 @@ import random
 
 def main():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("127.0.0.1", 5000))
+    host = "172.20.10.8"
+    port = 5001
+    s.connect((host, port))
 
     try:
         # İsteği olustur
-        data = "GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n" + \
+        username="altan"
+        password="altanaltan"
+        data = f"GET /save_user?username={username}&password={password} HTTP/1.1\r\nHost: www.example.com\r\n\r\n" + \
             "A" * 1000
         #data = "GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n" + \
         #    " ".join([str(random.randint(33, 126)) for _ in range(7)]) + \
