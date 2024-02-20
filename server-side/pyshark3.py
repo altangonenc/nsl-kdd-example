@@ -5,18 +5,15 @@ from datetime import datetime
 
 
 def insert_data_to_mongodb(src_ip, src_port, dst_ip, dst_port, protocol, result, times):
-    # MongoDB'ye bağlanın (default olarak localhost:27017)
+    # MongoDB (default  localhost:27017)
     client = pymongo.MongoClient("mongodb://localhost:27017/")
 
-    # Veritabanını seçin (varsa, yoksa otomatik olarak oluşturulur)
     db = client["mydatabase"]
 
-    # Koleksiyon adı
     collection = db["mycollection"]
 
     try:
-        # Veriyi ekleyin
-       # Veriyi oluştur
+
         data = {
             'src_ip': src_ip,
             'src_port': src_port,
@@ -27,38 +24,29 @@ def insert_data_to_mongodb(src_ip, src_port, dst_ip, dst_port, protocol, result,
             'time': times
         }
         
-        # Veriyi MongoDB'ye ekle
         collection.insert_one(data)
 
         print("Veri başarıyla MongoDB'ye eklendi.")
     except Exception as e:
         print("Veri eklenirken bir hata oluştu:", e)
     finally:
-        # Bağlantıyı kapatın
         client.close()
 
 
 def send_prediction_request(data):
-    # Flask API'sine istek gönder
-    url = "http://127.0.0.1:5000/predict"  # Flask uygulamasının çalıştığı adresi ve portu kullanın
+    url = "http://127.0.0.1:5000/predict"  
     response = requests.post(url, json=data)
-    
-
-    # İstek sonucunu ekrana yazdır
+  
     print(f"Prediction Result: {response.json()}")
     return response.json()
 
-# Trafik izleme başlat
 capture = pyshark.LiveCapture('Wi-Fi')
 
-# Verileri saklamak için bir list oluştur
 
 print("Start-->")
 
-# Trafik izleme döngüsü
 for packet in capture.sniff_continuously():
     
-    # Tarih ve saat bilgisini al
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]  # Milisaniyeyi dahil et, ancak son 3 hanesini kes
 
@@ -67,23 +55,22 @@ for packet in capture.sniff_continuously():
         src_port = int(packet['TCP'].srcport)
     elif 'UDP' in packet:
         src_port = int(packet['UDP'].srcport)
-    # Diğer taşıma katmanı protokollerini de burada ele alabilirsiniz
+    # you can add other transport layer protocols in there 
     else:
-        src_port = 0  # Eğer taşıma katmanı protokolü bulunamazsa src_port'a None atayın veya uygun bir hata işlemi yapın
+        src_port = 0 
 
     #dst_port = int(packet[protocol].dstport)
     if 'TCP' in packet:
         dst_port = int(packet['TCP'].dstport)
     elif 'UDP' in packet:
         dst_port = int(packet['UDP'].dstport)
-    # Diğer taşıma katmanı protokollerini de burada ele alabilirsiniz
+    # you can add other transport layer protocols in there 
     else:
-        dst_port = 0  # Eğer taşıma katmanı protokolü bulunamazsa src_port'a None atayın veya uygun bir hata işlemi yapın
+        dst_port = 0 
 
 
     if (dst_port == 5001):
-        # Paketin kaynak ve hedef IP adreslerini alın
-        # Paketin kaynak IP adresini alın
+    
         if 'ip' in packet:
             src_ip = packet.ip.src
         elif 'ipv6' in packet:
@@ -91,7 +78,7 @@ for packet in capture.sniff_continuously():
         else:
             src_ip = "Unknown"
 
-        # Paketin kaynak IP adresini alın
+
         if 'ip' in packet:
             dst_ip = packet.ip.dst
         elif 'ipv6' in packet:
@@ -101,24 +88,22 @@ for packet in capture.sniff_continuously():
         print("Source ip: ", src_ip)
         print("Destination ip: ", dst_ip)
 
-        # Paketin transport layer protokolünü alın (TCP, UDP veya ICMP)
+        
         protocol = packet.transport_layer
 
-        # Paketin kaynak ve hedef port numaralarını alın
-        
-        # Paketin veri boyutunu alın
+        # data size
         src_bytes = len(packet)
 
-        # Land flag kontrolü
+        # Land flag check
         land = 1 if src_ip == dst_ip and src_port == dst_port else 0
 
-        # Flag değerlerini alın
+        # flag values
         flags = packet.tcp.flags if 'TCP' in packet else packet.ip.flags
 
-        # Flag değerlerini string olarak alın
+        # flag values as strings
         flag_values = ''
         if flags:
-            if len(flags) >= 7:  # flags değişkeni en az 7 karakter içeriyorsa
+            if len(flags) >= 7: 
                 if flags[0] == '1':
                     flag_values += 'FIN '
                 if flags[1] == '1':
@@ -139,20 +124,19 @@ for packet in capture.sniff_continuously():
                 flag_values = 'None'
 
 
-        # Wrong fragment bilgisini alın
         flags_hex = packet.ip.flags
         wrong_fragment = int(flags_hex, 16) & 0x02
 
-        # Urgent flag kontrolü
+        # Urgent flag check
         if 'TCP' in packet:
             tcp_layer = packet['TCP']
-            # TCP paketinin urg (Urgent) özelliğini kontrol et
+            # check TCP packets urg value
             urgent = tcp_layer.urg if hasattr(tcp_layer, 'urg') else 0
         else:
             urgent = 0
         #urgent = packet.tcp.flags.urg if protocol == 'TCP' else 0
             
-        # Hedef portuna göre hizmet türünü belirle
+        # dest port if 
         if dst_port == '80':
             service = 'HTTP'
         elif dst_port == '443':
@@ -224,7 +208,6 @@ for packet in capture.sniff_continuously():
         # Is_guest_login: 1 if the login is a “guest” login; 0 otherwise.
         is_guest_login = 1 if payload.count('guest') else 0
 
-        # Elde edilen verileri bir dictionary'e ekleyerek listeye ekleyin
         data = {
             #'src_ip': src_ip,
             #'dst_ip': dst_ip,
@@ -258,11 +241,4 @@ for packet in capture.sniff_continuously():
             insert_data_to_mongodb(src_ip, src_port, dst_ip, dst_port, protocol, pre.get('prediction')[0], timestamp)
         
 
-
-    # Programı durdurmak istediğiniz zaman kullanıcıdan bir giriş alabilirsiniz
-    #stop = input("Programı durdurmak için 'q' tuşuna basın, devam etmek için Enter tuşuna basın: ")
-    #if stop.lower() == 'q':
-    #    break
-
-# Trafik izleme döngüsünden çıkın ve kaynağı serbest bırakın
 capture.close()

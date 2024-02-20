@@ -28,7 +28,7 @@ def main():
         username = request.split("\r\n")[0].split("?")[1].split("&")[0].split("=")[1]
         password = request.split("\r\n")[0].split("?")[1].split("&")[1].split("=")[1]
 
-        # Save the username and password to the database
+        # Save the username and password to the sql database
         save_to_database(username, password, db_host, db_user, db_password, db_name)
 
         response_data = "Received your request. Thanks!"

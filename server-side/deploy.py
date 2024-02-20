@@ -6,7 +6,6 @@ from sklearn.preprocessing import LabelEncoder
 
 app = Flask(__name__)
 
-# Modeli yükle
 xgb_model = joblib.load('xgb_model.pkl')
 
 @app.route('/predict', methods=['POST'])
@@ -17,27 +16,26 @@ def predict():
     print(data)
     data = prepare_input_data(data)
 
-    # Gelen veriyi modele uygun formata çevir
     input_data = preprocess_data(data)
-    # Tahmin yap
+
     prediction = xgb_model.predict(input_data)
-    # Tahmini JSON formatında döndür
+
     return jsonify({'prediction': prediction.tolist()})
 
 def preprocess_data(data):
-    # LabelEncoder nesnelerini her istek geldiğinde oluştur
+    # LabelEncoder
     protocol_type_le = LabelEncoder()
     service_le = LabelEncoder()
     flag_le = LabelEncoder()
 
-    # Veriyi bir DataFrame'e çevir
+    # conver to DataFrame
     df = pd.DataFrame([data])
     
-    # Label sütununu kaldır
+    # label sütununu kaldır
     if 'label' in df.columns:
         df = df.drop(['label'], axis=1)
     
-    # Label encoding işlemi
+    # Label encoding
     df['protocol_type'] = protocol_type_le.fit_transform(df['protocol_type'])
     df['service'] = service_le.fit_transform(df['service'])
     df['flag'] = flag_le.fit_transform(df['flag'])
@@ -53,12 +51,10 @@ def prepare_input_data(data):
         "dst_host_srv_serror_rate", "dst_host_rerror_rate", "dst_host_srv_rerror_rate", "label", "difficulty"
     ]
 
-    # Eksik verileri 0 ile doldur
     for column in required_columns:
         if column not in data:
             data[column] = 0
 
-    # Sütunları doğru sırayla sırala
     data = {col: data[col] for col in required_columns}
 
     return data

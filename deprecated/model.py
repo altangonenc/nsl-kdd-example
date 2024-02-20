@@ -5,7 +5,6 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split, cross_val_score
 import joblib
 
-# Veri setini yükleyin
 train_data = pd.read_csv("/content/KDDTrain+.txt")
 test_data = pd.read_csv("/content/KDDTest+.txt")
 
@@ -19,24 +18,19 @@ column_list = (["duration","protocol_type","service","flag","src_bytes","dst_byt
 train_data.columns = column_list
 test_data.columns  = column_list
 
-# Eksik etiketleri kontrol et
 missing_labels_in_test = set(test_data['label']) - set(train_data['label'])
 
-# Eksik etiketlere sahip verileri çıkar
 test_data = test_data[~test_data['label'].isin(missing_labels_in_test)]
 
-# Binary Classification için label değerlerini güncelle
 train_data['label'] = train_data['label'].apply(lambda x: 0 if x == 'normal' else 1)
 test_data['label'] = test_data['label'].apply(lambda x: 0 if x == 'normal' else 1)
 
-# Eğitim ve test veri setlerini ayırın
 X_train = train_data.drop(['label'], axis=1)
 y_train = train_data['label']
 
 X_test = test_data.drop(['label'], axis=1)
 y_test = test_data['label']
 
-# Label encoding işlemi
 protocol_type_le = LabelEncoder()
 service_le = LabelEncoder()
 flag_le = LabelEncoder()
@@ -49,24 +43,18 @@ X_test['protocol_type'] = protocol_type_le.transform(X_test['protocol_type'])
 X_test['service'] = service_le.transform(X_test['service'])
 X_test['flag'] = flag_le.transform(X_test['flag'])
 
-# XGBoost modelini oluşturun ve eğitin (parametreleri optimize etmek önemlidir)
-# En iyi parametreler: {'learning_rate': 0.1, 'max_depth': 5, 'min_child_weight': 1, 'n_estimators': 200, 'subsample': 0.8}
 
 xgb_model = XGBClassifier(learning_rate=0.1, max_depth=10, min_child_weight=1, n_estimators =200, subsample=0.8, random_state=42)
-#En iyi parametreler: {'learning_rate': 0.1, 'max_depth': 5, 'min_child_weight': 1, 'n_estimators': 200, 'subsample': 0.8}
 
-# Cross-validation ile modelin doğruluğunu değerlendirin
+
 cross_val_scores = cross_val_score(xgb_model, X_train, y_train, cv=5, scoring='accuracy')
 print("Cross-Validation Doğruluk Oranları:", cross_val_scores)
 print("Ortalama Doğruluk Oranı:", cross_val_scores.mean())
 
-# Modeli eğitelim
 xgb_model.fit(X_train, y_train)
 
-# Modeli dosyaya kaydet
 joblib.dump(xgb_model, 'xgb_model.pkl')
 
-# Test seti üzerinde modelin performansını değerlendirin
 def evaluate_model(model, X, y):
     y_pred = model.predict(X)
     accuracy = accuracy_score(y, y_pred)
@@ -74,7 +62,6 @@ def evaluate_model(model, X, y):
     matrix = confusion_matrix(y, y_pred)
     return accuracy, report, matrix
 
-# Test seti üzerinde XGBoost modelinin performansını değerlendirin
 xgb_accuracy, xgb_report, xgb_confusion_matrix = evaluate_model(xgb_model, X_test, y_test)
 print("\nXGBoost Model Performansı:")
 print(f"Doğruluk Oranı: {xgb_accuracy}")

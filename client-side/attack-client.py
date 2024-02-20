@@ -11,7 +11,7 @@ def main():
         # İsteği olustur
         username="altan"
         password="altanaltan"
-        data = f"GET /save_user?username={username}&password={password} HTTP/1.1\r\nHost: www.example.com\r\n\r\n" + \
+        data = f"GET /save_user?username={username}&password={password}\r\nHost: www.example.com\r\n\r\n" + \
             "A" * 1000
         #data = "GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n" + \
         #    " ".join([str(random.randint(33, 126)) for _ in range(7)]) + \

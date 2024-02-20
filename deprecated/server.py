@@ -62,30 +62,30 @@ def prepare_input_data(data):
         "dst_host_srv_serror_rate", "dst_host_rerror_rate", "dst_host_srv_rerror_rate", "label", "difficulty"
     ]
 
-    # Eksik verileri 0 ile doldur
+    # eksik verileri 0 ile doldur
     for column in required_columns:
         if column not in data:
             data[column] = 0
 
-    # Sütunları doğru sırayla sırala
+    # sutunları doğru sırayla sırala
     data = {col: data[col] for col in required_columns}
 
     return data
 
 def preprocess_data(data):
-    # LabelEncoder nesnelerini her istek geldiğinde oluştur
+    # LabelEncoderlari her istek geldiginde olustur
     protocol_type_le = LabelEncoder()
     service_le = LabelEncoder()
     flag_le = LabelEncoder()
 
-    # Veriyi bir DataFrame'e çevir
+    # convert to DataFrame
     df = pd.DataFrame([data])
     
-    # Label sütununu kaldır
+    # Label sütununu kaldir
     if 'label' in df.columns:
         df = df.drop(['label'], axis=1)
     
-    # Label encoding işlemi
+    # Label encoding 
     df['protocol_type'] = protocol_type_le.fit_transform(df['protocol_type'])
     df['service'] = service_le.fit_transform(df['service'])
     df['flag'] = flag_le.fit_transform(df['flag'])
